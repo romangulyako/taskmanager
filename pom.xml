@@ -81,6 +81,10 @@
             <artifactId>mapstruct</artifactId>
             <version>${mapstruct.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.liquibase</groupId>
+            <artifactId>liquibase-core</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
@@ -119,6 +123,17 @@
                             <artifactId>lombok</artifactId>
                         </exclude>
                     </excludes>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.liquibase</groupId>
+                <artifactId>liquibase-maven-plugin</artifactId>
+                <configuration>
+                    <propertyFile>src/main/resources/liquibase.properties</propertyFile>
+                    <changeLogFile>src/main/resources/db/changelog/db.changelog-master.yaml</changeLogFile>
+                    <driver>org.postgresql.Driver</driver>
+                    <referenceUrl>org.postgresql.Driver</referenceUrl>
+                    <logging>debug</logging>
                 </configuration>
             </plugin>
         </plugins>

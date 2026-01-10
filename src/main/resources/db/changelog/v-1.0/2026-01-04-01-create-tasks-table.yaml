@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-tasks-table
+      author: Roman Gulyako
+      changes:
+        - createTable:
+            tableName: tasks
+            schemaName: taskmanager
+            columns:
+              - column: { name: id, type: bigserial, autoIncrement: true, constraints: { primaryKey: true } }
+              - column: { name: title, type: varchar(255), constraints: { nullable: false } }
+              - column: { name: description, type: text }
+              - column: { name: status, type: varchar(32), defaultValue: 'OPEN', constraints: { nullable: false } }
+              - column: { name: due_date, type: date }

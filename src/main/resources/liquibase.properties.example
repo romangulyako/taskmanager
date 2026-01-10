@@ -1,0 +1,4 @@
+URL=your_database_url
+USERNAME=your_database_username
+PASSWORD=your_database_strong_password
+DEFAULTSCHEMANAME=your_default_schema_name
