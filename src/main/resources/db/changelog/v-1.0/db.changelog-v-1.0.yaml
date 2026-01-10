@@ -1,4 +1,7 @@
 databaseChangeLog:
   - include:
-      file: 2026-01-04-01-create-tasks-table.yaml
+      file: 2026-01-10-01-create-schema-taskmanager.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: 2026-01-04-02-create-tasks-table.yaml
       relativeToChangelogFile: true

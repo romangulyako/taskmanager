@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-schema-taskmanager
+      author: Roman Gulyako
+      changes:
+        - sql:
+            sql: CREATE SCHEMA IF NOT EXISTS taskmanager;
