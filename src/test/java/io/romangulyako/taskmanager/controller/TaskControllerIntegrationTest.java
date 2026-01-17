@@ -1,22 +1,19 @@
 package io.romangulyako.taskmanager.controller;
 
-import io.romangulyako.taskmanager.dto.ErrorResponse;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.romangulyako.taskmanager.dto.TaskRequest;
-import io.romangulyako.taskmanager.dto.TaskResponse;
 import io.romangulyako.taskmanager.entity.Task;
 import io.romangulyako.taskmanager.repository.TaskRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -24,12 +21,18 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import java.time.LocalDate;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
+@AutoConfigureMockMvc
 public class TaskControllerIntegrationTest {
     @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:17.6");
@@ -42,15 +45,19 @@ public class TaskControllerIntegrationTest {
     }
 
     @Autowired
-    private TestRestTemplate restTemplate;
-
-    @Autowired
     private TaskRepository taskRepository;
 
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
     private final LocalDate FIXED_DATE = LocalDate.of(2026, 1, 1);
-    
+
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
     @Test
-    void createTask_shouldReturnCreatedTask() {
+    void createTask_shouldReturnCreatedTask() throws Exception {
         // Arrange
         TaskRequest taskRequest = new TaskRequest(
                 "Integration Test Task",
@@ -59,21 +66,17 @@ public class TaskControllerIntegrationTest {
                 FIXED_DATE
         );
 
-        // Act
-        ResponseEntity<TaskResponse> response = restTemplate.postForEntity(
-                "/api/v1/tasks",
-                taskRequest,
-                TaskResponse.class
-        );
-
-        // Assert
-        assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals(taskRequest.title(), response.getBody().title());
+        // Act & Assert
+        mockMvc.perform(post("/api/v1/tasks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(taskRequest)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.title").value(taskRequest.title()));
     }
 
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
     @Test
-    void updateTask_shouldReturnUpdatedTaskResponse() {
+    void updateTask_shouldReturnUpdatedTaskResponse() throws Exception {
         // Arrange
         Task task = Task.builder()
                 .title("Old Task")
@@ -91,22 +94,17 @@ public class TaskControllerIntegrationTest {
                 FIXED_DATE
         );
 
-        // Act
-        ResponseEntity<TaskResponse> response = restTemplate.exchange(
-                "/api/v1/tasks/" + savedTask.getId(),
-                HttpMethod.PUT,
-                new HttpEntity<>(taskRequest),
-                TaskResponse.class
-        );
-
-        // Assert
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals(taskRequest.title(), response.getBody().title());
+        // Act & Assert
+        mockMvc.perform(put("/api/v1/tasks/" + savedTask.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(taskRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value(taskRequest.title()));
     }
 
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
     @Test
-    void deleteTask_shouldReturnNoContent() {
+    void deleteTask_shouldReturnNoContent() throws Exception {
         // Arrange
         Task task = Task.builder()
                 .title("Task to Delete")
@@ -117,20 +115,14 @@ public class TaskControllerIntegrationTest {
 
         Task savedTask = taskRepository.save(task);
 
-        // Act
-        ResponseEntity<Void> response = restTemplate.exchange(
-                "/api/v1/tasks/" + savedTask.getId(),
-                HttpMethod.DELETE,
-                null,
-                Void.class
-        );
-
-        // Assert
-        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        // Act & Assert
+        mockMvc.perform(delete("/api/v1/tasks/" + savedTask.getId()))
+                .andExpect(status().isNoContent());
     }
 
+    @WithMockUser(username = "user", roles = {"USER"})
     @Test
-    void getTask_shouldReturnTask_whenTaskExists() {
+    void getTask_shouldReturnTask_whenTaskExists() throws Exception {
         // Arrange
         Task task = Task.builder()
                 .title("Existing Task")
@@ -141,37 +133,27 @@ public class TaskControllerIntegrationTest {
 
         Task savedTask = taskRepository.save(task);
 
-        // Act
-        ResponseEntity<TaskResponse> response = restTemplate.getForEntity(
-                "/api/v1/tasks/" + savedTask.getId(),
-                TaskResponse.class
-        );
-
-        // Assert
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals(savedTask.getTitle(), response.getBody().title());
+        // Act & Assert
+        mockMvc.perform(get("/api/v1/tasks/" + savedTask.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value(savedTask.getTitle()));
     }
 
+    @WithMockUser(username = "user", roles = {"USER"})
     @Test
-    void getTask__shouldReturnErrorResponse_whenTaskNotFound() {
+    void getTask__shouldReturnErrorResponse_whenTaskNotFound() throws Exception {
         // Arrange
         long taskId = 1L;
         taskRepository.deleteById(taskId);
 
-        // Act
-        ResponseEntity<ErrorResponse> response = restTemplate.getForEntity(
-                "/api/v1/tasks/" + taskId,
-                ErrorResponse.class
-        );
-
-        // Assert
-        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
-        assertNotNull(response.getBody());
+        // Act & Assert
+        mockMvc.perform(get("/api/v1/tasks/" + taskId))
+                .andExpect(status().isNotFound());
     }
 
+    @WithMockUser(username = "user", roles = {"USER"})
     @Test
-    void getAllTasks_shouldReturnListOfTasks() {
+    void getAllTasks_shouldReturnListOfTasks() throws Exception {
         // Arrange
         Task task1 = Task.builder()
                 .title("Task 1")
@@ -187,24 +169,20 @@ public class TaskControllerIntegrationTest {
                 .dueDate(FIXED_DATE)
                 .build();
 
+        taskRepository.deleteAll();
         taskRepository.saveAll(List.of(task1, task2));
 
-        // Act
-        ResponseEntity<List<TaskResponse>> response = restTemplate.exchange(
-                "/api/v1/tasks",
-                HttpMethod.GET,
-                null,
-                new ParameterizedTypeReference<>() {}
-        );
-
-        // Assert
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals(2, response.getBody().size());
+        // Act & Assert
+        mockMvc.perform(get("/api/v1/tasks"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].title").value(task1.getTitle()))
+                .andExpect(jsonPath("$[1].title").value(task2.getTitle()));
     }
 
+    @WithMockUser(username = "user", roles = {"USER"})
     @Test
-    void getAllByStatus_shouldReturnFilteredTasks() {
+    void getAllByStatus_shouldReturnFilteredTasks() throws Exception {
         // Arrange
         Task task1 = Task.builder()
                 .title("Task 1")
@@ -223,17 +201,9 @@ public class TaskControllerIntegrationTest {
         taskRepository.deleteAll();
         taskRepository.saveAll(List.of(task1, task2));
 
-        // Act
-        ResponseEntity<List<TaskResponse>> response = restTemplate.exchange(
-                "/api/v1/tasks/status?status=OPEN",
-                HttpMethod.GET,
-                null,
-                new ParameterizedTypeReference<>() {}
-        );
-
-        // Assert
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals(2, response.getBody().size());
+        // Act & Assert
+        mockMvc.perform(get("/api/v1/tasks?status=OPEN"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)));
     }
 }
