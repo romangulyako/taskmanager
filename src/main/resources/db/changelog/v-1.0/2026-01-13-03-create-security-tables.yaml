@@ -1,0 +1,45 @@
+databaseChangeLog:
+  - changeSet:
+      id: create-users-table
+      author: Roman Gulyako
+      changes:
+        - createTable:
+            tableName: users
+            schemaName: taskmanager
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: username
+                  type: varchar(255)
+                  constraints:
+                    unique: true
+                    nullable: false
+              - column:
+                  name: password
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: create-user-roles-table
+      author: Roman Gulyako
+      changes:
+        - createTable:
+            tableName: user_roles
+            schemaName: taskmanager
+            columns:
+              - column:
+                  name: user_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: role
+                  type: varchar(255)
+                  constraints:
+                    nullable: false

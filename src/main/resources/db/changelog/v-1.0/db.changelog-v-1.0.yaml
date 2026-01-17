@@ -5,3 +5,6 @@ databaseChangeLog:
   - include:
       file: 2026-01-04-02-create-tasks-table.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 2026-01-13-03-create-security-tables.yaml
+      relativeToChangelogFile: true
