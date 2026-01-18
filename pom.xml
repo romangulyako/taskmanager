@@ -129,7 +129,7 @@
     </dependencies>
 
     <build>
-        <finalName>task-manager-${version}</finalName>
+        <finalName>task-manager-${project.version}</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
